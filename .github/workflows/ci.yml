@@ -54,15 +54,17 @@ jobs:
 
       - name: Start platform & demo target server for E2E
         run: |
-          NODE_ENV=production npx tsx server.ts &
+          NODE_ENV=production npx tsx server.ts > /tmp/ci-server.log 2>&1 &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           for i in $(seq 1 30); do
-            if curl -s http://127.0.0.1:3000/api/health > /dev/null; then
+            if curl -fsS http://127.0.0.1:3000/api/health > /dev/null; then
               exit 0
             fi
             sleep 1
           done
+          echo "Server failed to become healthy within 30s:"
+          cat /tmp/ci-server.log || true
           exit 1
 
       - name: Run platform E2E tests
@@ -97,12 +99,20 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      - run: npm ci
-      - run: npx prisma generate && npx prisma db push
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client & sync SQLite schema
+        run: npx prisma generate && npx prisma db push
+
       - name: Run Gemini integration tests
         run: npx vitest run tests/integration/gemini.optional.test.ts
