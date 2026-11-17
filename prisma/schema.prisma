@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  role      String    @default("QA_ARCHITECT")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Project {
+  id                   String                   @id @default(cuid())
+  name                 String
+  description          String
+  applicationName      String
+  applicationUrl       String
+  environment          String                   @default("local")
+  browserPreference    String                   @default("chromium")
+  userId               String?
+  user                 User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  requirementDocuments RequirementDocument[]
+  requirements         Requirement[]
+  testScenarios        TestScenario[]
+  explorations         ApplicationExploration[]
+  generatedAutomations GeneratedAutomation[]
+  executionRuns        ExecutionRun[]
+  coverageMappings     CoverageMapping[]
+  aiExecutionLogs      AIExecutionLog[]
+}
+
+model RequirementDocument {
+  id            String        @id @default(cuid())
+  projectId     String
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileName      String
+  fileType      String
+  fileSizeBytes Int
+  rawText       String
+  analysisJson  String?
+  analysisNotes String?
+  status        String        @default("UPLOADED") // UPLOADED | ANALYZED | APPROVED
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  requirements  Requirement[]
+}
+
+model Requirement {
+  id                 String               @id @default(cuid())
+  projectId          String
+  project            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  documentId         String?
+  document           RequirementDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  reqCode            String               // e.g. REQ-001
+  title              String
+  description        String
+  category           String               @default("Functional") // Functional | Non-Functional
+  priority           String               @default("Medium") // High | Medium | Low
+  actorsJson         String               @default("[]")
+  ambiguitiesJson    String               @default("[]")
+  assumptionsJson    String               @default("[]")
+  missingInfoJson    String               @default("[]")
+  status             String               @default("DRAFT") // DRAFT | APPROVED
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  acceptanceCriteria AcceptanceCriteria[]
+  businessRules      BusinessRule[]
+  coverageMappings   CoverageMapping[]
+
+  @@unique([projectId, reqCode])
+}
+
+model AcceptanceCriteria {
+  id            String      @id @default(cuid())
+  requirementId String
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  criteriaCode  String      // e.g. AC-001
+  statement     String
+  isTestable    Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+}
+
+model BusinessRule {
+  id            String      @id @default(cuid())
+  requirementId String
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  ruleCode      String      // e.g. BR-001
+  statement     String
+  severity      String      @default("Mandatory")
+  createdAt     DateTime    @default(now())
+}
+
+model TestScenario {
+  id               String            @id @default(cuid())
+  projectId        String
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCaseId       String            // e.g. TC-001
+  requirementIds   String            // JSON array of reqCodes e.g. ["REQ-001"]
+  title            String
+  testType         String            // Positive | Negative | Boundary | Equivalence | Authentication | Authorization | Validation | Integration | Regression | Security
+  priority         String            // High | Medium | Low
+  preconditions    String            // JSON array
+  testSteps        String            // JSON array
+  testData         String            // JSON object
+  expectedResult   String
+  tags             String            // JSON array
+  reasoning        String
+  status           String            @default("DRAFT") // DRAFT | APPROVED | AUTOMATED
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  coverageMappings CoverageMapping[]
+  executionResults ExecutionResult[]
+
+  @@unique([projectId, testCaseId])
+}
+
+model ApplicationExploration {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  targetUrl          String
+  pageTitle          String
+  inspectedUrlsJson  String   // JSON array of URLs visited
+  formsJson          String   // JSON array of discovered forms and controls
+  interactiveJson    String   // JSON array of buttons, links, inputs, roles
+  navigationJson     String   // JSON array of navigation paths
+  domSummary         String
+  screenshotPath     String?
+  status             String   @default("COMPLETED") // COMPLETED | FAILED
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+}
+
+model GeneratedAutomation {
+  id               String           @id @default(cuid())
+  projectId        String
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspaceDir     String
+  scenarioIdsJson  String           // JSON array of TestScenario IDs
+  validationStatus String           @default("PENDING") // PENDING | PASSED | FAILED
+  validationReport String?          // JSON validation details
+  approvalStatus   String           @default("PENDING_REVIEW") // PENDING_REVIEW | APPROVED | REJECTED
+  approvedBy       String?
+  approvedAt       DateTime?
+  reviewNotes      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  files            AutomationFile[]
+  executionRuns    ExecutionRun[]
+}
+
+model AutomationFile {
+  id            String              @id @default(cuid())
+  automationId  String
+  automation    GeneratedAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  relativePath  String              // e.g. pages/LoginPage.ts
+  fileCategory  String              // PAGE_OBJECT | FIXTURE | TEST_SPEC | TEST_DATA | HELPER
+  content       String
+  locatorsJson  String              @default("[]")
+  linkedReqIds  String              @default("[]")
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model ExecutionRun {
+  id                String               @id @default(cuid())
+  projectId         String
+  project           Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  automationId      String?
+  automation        GeneratedAutomation? @relation(fields: [automationId], references: [id], onDelete: SetNull)
+  browser           String               @default("chromium")
+  headed            Boolean              @default(false)
+  workers           Int                  @default(1)
+  retries           Int                  @default(0)
+  status            String               @default("QUEUED") // QUEUED | RUNNING | PASSED | FAILED | ERROR
+  totalTests        Int                  @default(0)
+  passedTests       Int                  @default(0)
+  failedTests       Int                  @default(0)
+  skippedTests      Int                  @default(0)
+  durationMs        Int                  @default(0)
+  htmlReportPath    String?
+  jsonReportPath    String?
+  junitReportPath   String?
+  executiveSummary  String?              // JSON FailureAnalysis / Executive report
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime             @default(now())
+  results           ExecutionResult[]
+}
+
+model ExecutionResult {
+  id             String        @id @default(cuid())
+  executionRunId String
+  executionRun   ExecutionRun  @relation(fields: [executionRunId], references: [id], onDelete: Cascade)
+  scenarioId     String?
+  scenario       TestScenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  testCaseId     String?
+  testTitle      String
+  specFile       String
+  browser        String        @default("chromium")
+  status         String        // PASSED | FAILED | SKIPPED | TIMEDOUT
+  durationMs     Int           @default(0)
+  errorMessage   String?
+  stackTrace     String?
+  screenshotPath String?
+  tracePath      String?
+  videoPath      String?
+  createdAt      DateTime      @default(now())
+}
+
+model CoverageMapping {
+  id             String        @id @default(cuid())
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirementId  String
+  requirement    Requirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  testScenarioId String?
+  testScenario   TestScenario? @relation(fields: [testScenarioId], references: [id], onDelete: SetNull)
+  specFile       String?
+  lastStatus     String        @default("NOT_EXECUTED") // PASSED | FAILED | SKIPPED | NOT_EXECUTED
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model AIExecutionLog {
+  id         String   @id @default(cuid())
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  agentName  String
+  provider   String   // gemini | mock
+  model      String
+  durationMs Int
+  success    Boolean
+  tokenCount Int?
+  errorCode  String?
+  createdAt  DateTime @default(now())
+}

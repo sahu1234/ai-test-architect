@@ -1,0 +1,8 @@
+{
+  "name": "AI Test Architect",
+  "description": "AI-powered requirement-to-Playwright automation platform with agentic requirement analysis, DOM exploration, Page Object Model generation, controlled test execution, and traceability reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

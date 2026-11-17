@@ -1,0 +1,14 @@
+node_modules
+dist
+server.js
+.env
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
+test-results/*
+!test-results/.gitkeep
+playwright-report
+generated-tests/*
+!generated-tests/.gitkeep
+.DS_Store
+*.log
