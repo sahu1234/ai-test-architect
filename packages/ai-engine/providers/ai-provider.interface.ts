@@ -48,11 +48,27 @@ export interface FailureInput {
   };
 }
 
+export interface AIRequestOptions {
+  abortSignal?: AbortSignal;
+}
+
 export interface AIProvider {
   readonly providerName: 'gemini' | 'mock';
   readonly modelName: string;
-  analyzeRequirements(input: RequirementAnalysisInput): Promise<RequirementAnalysis>;
-  generateTestScenarios(input: TestPlanningInput): Promise<TestScenarioItem[]>;
-  generateAutomation(input: AutomationInput): Promise<GeneratedAutomationOutput>;
-  analyzeFailure(input: FailureInput): Promise<FailureAnalysis>;
+  analyzeRequirements(
+    input: RequirementAnalysisInput,
+    requestOptions?: AIRequestOptions
+  ): Promise<RequirementAnalysis>;
+  generateTestScenarios(
+    input: TestPlanningInput,
+    requestOptions?: AIRequestOptions
+  ): Promise<TestScenarioItem[]>;
+  generateAutomation(
+    input: AutomationInput,
+    requestOptions?: AIRequestOptions
+  ): Promise<GeneratedAutomationOutput>;
+  analyzeFailure(
+    input: FailureInput,
+    requestOptions?: AIRequestOptions
+  ): Promise<FailureAnalysis>;
 }
